@@ -1,0 +1,2 @@
+# LobbyWars
+ A SpigotMC plugin

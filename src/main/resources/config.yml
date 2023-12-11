@@ -1,0 +1,13 @@
+joinPVPMessage : "&e&l*** &r&aPVP ENABLED &e&l***"
+quitPVPMessage : "&6&l*** &cPVP DISABLED &6&l***"
+itemName: "&l&aPvP"
+deathLogMessage: "&7[&cLobbyWars&7] &6%killer% killed &e%victim%"
+itemLore:
+  - "&7Hold in hand for 3 seconds to turn on PvP"
+  - "&7To later turn off PvP mode, simply switch item in your hand."
+  - "&7You will be able to hurt only players in PvP mode!"
+countdownMessage: "&a&lPvP enabled in: &r&e%timer% &a&l!" #Replaces %timer% with time delay [s].
+
+#MongoDB - Required. You also need to either give access to create collection 'player_stats' or create it yourself manually!
+dbConnectionString: "" #eg. mongodb+srv://USERNAME:PASSWORD@CLUSTER_ID.ADRESS.mongodb.net/?retryWrites=true&w=majority
+dbName: "" #Cluser/DataBase name
