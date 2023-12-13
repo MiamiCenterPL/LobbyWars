@@ -7,7 +7,10 @@ itemLore:
   - "&7To later turn off PvP mode, simply switch item in your hand."
   - "&7You will be able to hurt only players in PvP mode!"
 countdownMessage: "&a&lPvP enabled in: &r&e%timer% &a&l!" #Replaces %timer% with time delay [s].
+killCounterMessage: "&aYou have killed &2%kills% player(s)."
+deathCounterMessage: "&cYou have died &4%deaths% &ctime(s)."
 
-#MongoDB - Required. You also need to either give access to create collection 'player_stats' or create it yourself manually!
+#MongoDB - Required tracking stats. Plugin works without it though.
 dbConnectionString: "" #eg. mongodb+srv://USERNAME:PASSWORD@CLUSTER_ID.ADRESS.mongodb.net/?retryWrites=true&w=majority
 dbName: "" #Cluser/DataBase name
+dbCollectionName: "" #Desired collection name

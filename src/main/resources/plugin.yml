@@ -2,3 +2,7 @@ name: LobbyWars
 version: 1.0
 main: net.miamicenter.lobbywars.LobbyWars
 api-version: 1.13
+commands:
+  lobbywars:
+    description: A command for checking your stats
+    usage: /lobbywars stats

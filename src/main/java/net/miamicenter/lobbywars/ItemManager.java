@@ -13,12 +13,41 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.List;
 
 public class ItemManager {
-    private static ItemManager instance;
-    private LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
-    public final NamespacedKey nonDroppableKey = CustomAttributes.NON_DROPPABLE.getNamespacedKey(plugin);
-    public final NamespacedKey nonMovableKey = CustomAttributes.NON_MOVABLE.getNamespacedKey(plugin);;
-    public final NamespacedKey triggerPvp = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);;
+    private final LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
+    private final NamespacedKey nonDroppableKey = CustomAttributes.NON_DROPPABLE.getNamespacedKey(plugin);
+    private final NamespacedKey nonMovableKey = CustomAttributes.NON_MOVABLE.getNamespacedKey(plugin);
+    private final NamespacedKey triggerPvp = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
 
+    public boolean blockItemDrop(ItemMeta meta){
+        if (meta != null) {
+            PersistentDataContainer container = meta.getPersistentDataContainer();
+            if (container.has(nonDroppableKey, PersistentDataType.BOOLEAN)) return container.get(nonDroppableKey, PersistentDataType.BOOLEAN);
+        }
+        return false;
+    }
+    public boolean blockItemMove(ItemStack item){
+        if (item == null) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            PersistentDataContainer container = meta.getPersistentDataContainer();
+            return container.has(nonMovableKey, PersistentDataType.BOOLEAN) && container.get(nonMovableKey, PersistentDataType.BOOLEAN);
+        }
+        return false;
+    }
+    public boolean canTriggerPvp(ItemStack item) {
+        if (item == null) return false;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+
+        NamespacedKey triggerPvpKey = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
+        if (meta.getPersistentDataContainer().has(triggerPvpKey, PersistentDataType.BOOLEAN)) {
+            return meta.getPersistentDataContainer().get(triggerPvpKey, PersistentDataType.BOOLEAN);
+        }
+        return false;
+    }
     public void givePvPItem(Player player) {
         ItemStack pvpItem = createPvPItem();
         player.getInventory().setItem(8, pvpItem); // Set the item to the last slot in the hotbar
