@@ -11,19 +11,30 @@ import org.bson.UuidRepresentation;
 import org.bson.codecs.UuidCodec;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.conversions.Bson;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 public class MongoDBManager {
     LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
     private MongoDatabase DB;
     private MongoClient mongoClient;
+    /**
+     * A function that will disconnect from MongoDB
+     */
     public void disconnect() {
         if (mongoClient != null) {
             mongoClient.close();
             System.out.println("MongoDB connection closed.");
         }
     }
+    /**
+     * A function that will try to connect to the Mongo Data Base
+     * that is set in the config.yml
+     */
     public void connect() {
         String connectionString = plugin.getConfigString("dbConnectionString");
         String db_name = plugin.getConfigString("dbName");
@@ -52,20 +63,64 @@ public class MongoDBManager {
             DB.runCommand(new Document("ping", 1));
             System.out.println("Pinged your deployment. You successfully connected to MongoDB!");
         } catch (MongoException e) {
-            e.printStackTrace();
+            System.out.println("[ERROR] Could not connect to MongoDB!");
         }
     }
+    /**
+     * Generic Async task function
+     *
+     * @param executeFunction - A function that will be executed asynchronously,
+     * @param onCallback     - (Optional) A function that will be executed as a result function,
+     *                       this will also get the result from the executeFunction,
+     * @param <T>            Type of the executeFunction's result.
+     * @param <P>            Type of executeFunction's parameters
+     */
+    private <T, P> void asyncDBAccess(Supplier<T> executeFunction, BiConsumer<T, P> onCallback, P params) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            T result = executeFunction.get();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                try {
+                    onCallback.accept(result, params);
+                } catch (ClassCastException e) {
+                    System.out.println("[ERROR] Could not pass result, params from executeFunction to onCallback");
+                }
+            });
+        });
+    }
 
-    public void updatePlayerStats(UUID uuid, String playerName, boolean dead, boolean kill) {
+    /**
+     * Generic Async task function
+     *
+     * @param executeFunction - A function that will be executed asynchronously,
+     *                        although you won't be able to get function's result.
+     *                        Used for function that returns void
+     */
+    private void asyncDBAccess(Runnable executeFunction) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, executeFunction);
+    }
+    /**
+     * Update player's death and kill counts.
+     *
+     * @param uuid           - Player's Unique identifier,
+     * @param dead           - If true, will increase player death count by 1
+     * @param kill            - If true, will increase player kill count by 1
+     */
+    public void updatePlayerStats(UUID uuid, boolean dead, boolean kill) {
         if (!isDatabaseConnected()) return;
+        //Make async task:
+        asyncDBAccess(() -> updatePlayerStatsAsync(uuid, dead, kill));
+    }
+    /**
+     * Please use updatePlayerStats function instead,
+     * this function will be called asynchronously when
+     * executed by updatePlayerStats function.
+     */
+    private void updatePlayerStatsAsync(UUID uuid, boolean dead, boolean kill) {
         MongoCollection<Document> playerStatsCollection = DB.getCollection("player_stats");
-
-        // Sprawdź, czy dokument dla gracza już istnieje
         Bson filter = Filters.eq("UUID", uuid);
         Document existingDocument = playerStatsCollection.find(filter).first();
 
         if (existingDocument != null) {
-            // Aktualizuj istniejący dokument
             int updatedKills = existingDocument.getInteger("kills", 0);
             int updatedDeaths = existingDocument.getInteger("deaths", 0);
 
@@ -77,44 +132,61 @@ public class MongoDBManager {
                 updatedDeaths += 1;
             }
 
-            Bson update = new Document("$set", new Document("playerName", playerName)
-                    .append("deaths", updatedDeaths)
+            Bson update = new Document("$set", new Document("deaths", updatedDeaths)
                     .append("kills", updatedKills));
 
             playerStatsCollection.updateOne(filter, update);
         } else {
             Document newPlayerStats = new Document("UUID", uuid)
-                    .append("playerName", playerName)
                     .append("deaths", dead ? 1 : 0)
                     .append("kills", kill ? 1 : 0);
             playerStatsCollection.insertOne(newPlayerStats);
         }
     }
+    /**
+     * Asynchronous function to fetch Player kills from DB
+     * Later it will send that value to player.
+     *
+     * @param uuid - Player's UUID
+     */
+    public void getPlayerKills(UUID uuid) {
+        if (!isDatabaseConnected()) return;
+        asyncDBAccess(() -> getPlayerStatAsync(uuid, "kills"), this::sendPlayerKillCount, uuid);
+    }
+    /**
+     * This simply sends player his kill count value
+     *
+     * @param kills - Player's kill counter
+     * @param uuid - Player's UUID
+     */
+    private void sendPlayerKillCount(int kills, UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        String msg = plugin.getConfigString("killCounterMessage")
+            .replace("%kills%", String.valueOf(kills));
+        player.sendMessage(msg);
+    }
 
-    public int getPlayerKills(UUID uuid) {
-        if (!isDatabaseConnected()) return 0;
-        MongoCollection<Document> playerStatsCollection = DB.getCollection("player_stats");
+    public void getPlayerDeaths(UUID uuid) {
+        if (!isDatabaseConnected()) return;
+        asyncDBAccess(() -> getPlayerStatAsync(uuid, "deaths"), this::sendPlayerDeathsCount, uuid);
+    }
+
+    private int getPlayerStatAsync(UUID uuid, String var) {
+        String collectionName = plugin.getConfigString("dbCollectionName");
+        MongoCollection<Document> playerStatsCollection = DB.getCollection(collectionName);
         Bson filter = Filters.eq("UUID", uuid);
 
         Document playerStatsDocument = playerStatsCollection.find(filter).first();
         if (playerStatsDocument != null) {
-            return playerStatsDocument.getInteger("kills", 0);
+            return playerStatsDocument.getInteger(var, 0);
         } else {
             return 0;
         }
     }
-
-    public int getPlayerDeaths(UUID uuid) {
-        if (!isDatabaseConnected()) return 0;
-        MongoCollection<Document> playerStatsCollection = DB.getCollection("player_stats");
-        Bson filter = Filters.eq("UUID", uuid);
-
-        Document playerStatsDocument = playerStatsCollection.find(filter).first();
-        if (playerStatsDocument != null) {
-            return playerStatsDocument.getInteger("deaths", 0);
-        } else {
-            return 0;
-        }
+    private void sendPlayerDeathsCount(int deaths, UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        String msg = plugin.getConfigString("deathCounterMessage").replace("%deaths%", String.valueOf(deaths));
+        player.sendMessage(msg);
     }
     public void createCollectionIfNotExists(String collectionName) {
         if (isDatabaseConnected()){

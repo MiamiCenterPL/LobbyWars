@@ -20,7 +20,7 @@ public class TimerManager {
             } else {
                 callback.run();
             }
-        }, 0L, 1L).getTaskId(); // Interval w sekundach, zamieniamy na ticki (20 ticków = 1 sekunda)
+        }, 0L, 1L).getTaskId();
         onInterruptMap.put(taskId, onInterrupt);
         return taskId;
     }
