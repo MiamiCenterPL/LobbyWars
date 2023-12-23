@@ -12,21 +12,32 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.UUID;
 
 public class EventListener implements Listener {
-    LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
-    ItemManager itemManager = plugin.getItemManager();
-    PvPManager pvpManager = plugin.getPvPManager();
+    private final ItemManager itemManager = ItemManager.getInstance();
+    private final PvPManager pvpManager = PvPManager.getInstance();
+    private final DBHelper dbHelper = DBHelper.getInstance();
 
     //Events;
     @EventHandler
     private void onPlayerJoin(PlayerJoinEvent event){
         Player player = event.getPlayer();
-        //Apply only to Survival player;
+        dbHelper.getPlayerStats(player);
         if (player.getGameMode() == GameMode.SURVIVAL) {
             itemManager.givePvPItem(player);
        }
+    }
+    @EventHandler
+    private void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        PlayerStats record = PlayerStatsCache.getStats(uuid);
+        dbHelper.updatePlayerStats(uuid, record);
+
+        PlayerStatsCache.removeStats(uuid);
     }
 
     @EventHandler
@@ -81,27 +92,26 @@ public class EventListener implements Listener {
     @EventHandler
     private void onItemDrop(PlayerDropItemEvent event) {
         ItemStack droppedItem = event.getItemDrop().getItemStack();
-        ItemMeta meta = droppedItem.getItemMeta();
-        if (itemManager.blockItemDrop(meta)) {
+        if (itemManager.blockItemDrop(droppedItem)) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        ItemMeta meta = event.getItemInHand().getItemMeta();
+        ItemStack item = event.getItemInHand();
         //Block placing placable objects with block attribute NON_DROPPABLE - for use of Sunflowers etc.
-        if (itemManager.blockItemDrop(meta)) {
+        if (itemManager.blockItemDrop(item)) {
             event.setCancelled(true);
         }
     }
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getClickedInventory() != null && event.getCurrentItem() != null) {
-            ItemStack clickedItem = event.getCurrentItem();
-            if (itemManager.blockItemMove(clickedItem)) {
-                event.setCancelled(true);
-            }
+        if (event.getClickedInventory() == null || event.getCurrentItem() == null) return;
+
+        ItemStack clickedItem = event.getCurrentItem();
+        if (itemManager.blockItemMove(clickedItem)) {
+            event.setCancelled(true);
         }
     }
     @EventHandler

@@ -7,7 +7,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 public class CommandManager implements CommandExecutor {
-    LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
     @Override
     public boolean onCommand(@NotNull final CommandSender cs, @NotNull Command cmd, @NotNull String label, String[] args) {
         if (cs instanceof Player player) {
@@ -16,8 +15,11 @@ public class CommandManager implements CommandExecutor {
                 cs.sendMessage("  /lobbywars stats");
                 return true;
             }
-            plugin.getDBManager().getPlayerDeaths(player.getUniqueId());
-            plugin.getDBManager().getPlayerKills(player.getUniqueId());
+            PlayerStats stats = PlayerStatsCache.getStats(player.getUniqueId());
+            player.sendMessage("Kills : %kills%\nDeaths : %deaths%"
+                    .replace("%deaths%", String.valueOf(stats.getDeaths()))
+                    .replace("%kills%", String.valueOf(stats.getKills()))
+            );
             return true;
         }
         cs.sendMessage("This command is usable only by players.");

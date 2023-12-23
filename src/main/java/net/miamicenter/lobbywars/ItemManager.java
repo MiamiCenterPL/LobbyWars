@@ -13,46 +13,67 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.List;
 
 public class ItemManager {
-    private final LobbyWars plugin = LobbyWars.getPlugin(LobbyWars.class);
-    private final NamespacedKey nonDroppableKey = CustomAttributes.NON_DROPPABLE.getNamespacedKey(plugin);
-    private final NamespacedKey nonMovableKey = CustomAttributes.NON_MOVABLE.getNamespacedKey(plugin);
-    private final NamespacedKey triggerPvp = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
+    private static ItemManager instance;
+    private final LobbyWars plugin;
+    private final NamespacedKey nonDroppableKey;
+    private final NamespacedKey nonMovableKey;
+    private final NamespacedKey triggerPvp;
 
-    public boolean blockItemDrop(ItemMeta meta){
-        if (meta != null) {
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            if (container.has(nonDroppableKey, PersistentDataType.BOOLEAN)) return container.get(nonDroppableKey, PersistentDataType.BOOLEAN);
-        }
-        return false;
+    private ItemManager() {
+        this.plugin = LobbyWars.getPlugin(LobbyWars.class);
+        this.nonDroppableKey = CustomAttributes.NON_DROPPABLE.getNamespacedKey(plugin);
+        this.nonMovableKey = CustomAttributes.NON_MOVABLE.getNamespacedKey(plugin);
+        this.triggerPvp = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
     }
-    public boolean blockItemMove(ItemStack item){
-        if (item == null) {
-            return false;
+
+    public static ItemManager getInstance() {
+        if (instance == null) {
+            instance = new ItemManager();
         }
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            return container.has(nonMovableKey, PersistentDataType.BOOLEAN) && container.get(nonMovableKey, PersistentDataType.BOOLEAN);
-        }
-        return false;
+        return instance;
     }
-    public boolean canTriggerPvp(ItemStack item) {
+    /**
+     * @return true if item mustn't be dropped or placed
+     */
+    public boolean blockItemDrop(ItemStack item){
         if (item == null) return false;
-
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
-
-        NamespacedKey triggerPvpKey = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
-        if (meta.getPersistentDataContainer().has(triggerPvpKey, PersistentDataType.BOOLEAN)) {
-            return meta.getPersistentDataContainer().get(triggerPvpKey, PersistentDataType.BOOLEAN);
-        }
-        return false;
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        return container.has(nonDroppableKey, PersistentDataType.BOOLEAN) && container.get(nonDroppableKey, PersistentDataType.BOOLEAN);
     }
+    /**
+     * @return true if item mustn't be moved in inventory
+     */
+    public boolean blockItemMove(ItemStack item){
+        if (item == null) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        return container.has(nonMovableKey, PersistentDataType.BOOLEAN) && container.get(nonMovableKey, PersistentDataType.BOOLEAN);
+
+    }
+    /**
+     * @return true if item can trigger PVP
+     */
+    public boolean canTriggerPvp(ItemStack item) {
+        if (item == null) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        NamespacedKey triggerPvpKey = CustomAttributes.TRIGGER_PVP.getNamespacedKey(plugin);
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        return container.has(triggerPvpKey, PersistentDataType.BOOLEAN) && container.get(triggerPvpKey, PersistentDataType.BOOLEAN);
+    }
+    /**
+     * Set player's hotbar slot 8th to an PVP Trigger Item
+     */
     public void givePvPItem(Player player) {
         ItemStack pvpItem = createPvPItem();
         player.getInventory().setItem(8, pvpItem); // Set the item to the last slot in the hotbar
     }
-
+    /**
+     * Clears player armour slots
+     */
     public void clearArmour(Player player) {
         player.getInventory().setBoots(null);
         player.getInventory().setLeggings(null);
@@ -60,6 +81,9 @@ public class ItemManager {
         player.getInventory().setHelmet(null);
         player.getInventory().setItemInMainHand(null);
     }
+    /**
+     * This will return an PVP Trigger item.
+     */
     private ItemStack createPvPItem() {
         ItemStack item = new ItemStack(Material.SUNFLOWER);
         ItemMeta meta = item.getItemMeta();
@@ -78,6 +102,10 @@ public class ItemManager {
         }
         return item;
     }
+    /**
+     * This function will give player a set of enchanted Diamond armour and an enchanted sword.
+     * @param player - Player which receives the items.
+     */
     public void giveDiamondGear(Player player) {
         ItemStack diamondBoots = createItem(Material.DIAMOND_BOOTS, "Diamond Boots", Enchantment.PROTECTION_ENVIRONMENTAL, 5);
         ItemStack diamondLeggings = createItem(Material.DIAMOND_LEGGINGS, "Diamond Leggings", Enchantment.PROTECTION_ENVIRONMENTAL, 5);
@@ -91,7 +119,13 @@ public class ItemManager {
         player.getInventory().setHelmet(diamondHelmet);
         player.getInventory().setItemInMainHand(diamondSword);
     }
-
+    /**
+     * Basic create item function. All created items will have 'NON_MOVABLE' attribute.
+     * @param material - Item's material you want to spawn e.g. SUN_FLOWER
+     * @param displayName - Item's display name
+     * @param enchantment Item's enchantment (accepts only single one)
+     * @param enchantmentLevel Item's enchantment level
+     */
     private ItemStack createItem(Material material, String displayName, Enchantment enchantment, int enchantmentLevel) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();

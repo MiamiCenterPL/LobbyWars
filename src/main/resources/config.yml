@@ -14,3 +14,7 @@ deathCounterMessage: "&cYou have died &4%deaths% &ctime(s)."
 dbConnectionString: "" #eg. mongodb+srv://USERNAME:PASSWORD@CLUSTER_ID.ADRESS.mongodb.net/?retryWrites=true&w=majority
 dbName: "" #Cluser/DataBase name
 dbCollectionName: "" #Desired collection name
+#Redis - Used for storing Logs
+redisIP: "127.0.0.1"
+redisPort: "6379"
+redisPassword: ""
